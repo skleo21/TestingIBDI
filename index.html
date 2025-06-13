@@ -15,6 +15,7 @@
         - Report Info: Patient trajectory data (final concentration, c-score, t-score over weeks). Goal: Show change over time. Viz/Presentation: Interactive Line Chart (Chart.js) for 'final_concentration'. Interaction: User selects a patient scenario from a dropdown, which dynamically updates the chart and associated data cards. Justification: A line chart is the clearest way to visualize trends. Making it interactive allows for direct comparison between different patient journeys. Library/Method: Chart.js on a Canvas element.
         - Report Info: Calprotectin reference ranges. Goal: Inform/Provide Context. Viz/Presentation: A styled HTML table placed directly beside the chart. Interaction: Static. Justification: Provides immediate, essential context for interpreting the chart data.
         - Report Info: Python simulation scripts and setup instructions. Goal: Organize/Inform. Viz/Presentation: Accordion-style collapsible sections for code blocks. Interaction: Click to expand/collapse. A 'Copy to Clipboard' button for each code block. Justification: Manages screen real estate effectively and provides a direct utility for developers.
+        - Report Info: Patient trajectory data for LLM interpretation. Goal: Provide AI-driven insights. Viz/Presentation: Text output from LLM. Interaction: User clicks a button to send current patient data to Gemini API and displays the generated summary. Justification: Enhances data understanding with contextual AI interpretation, adding value beyond raw visualization. Library/Method: Fetch API with Gemini 2.0 Flash.
         - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -22,7 +23,15 @@
         @media (min-width: 768px) { .chart-container { height: 400px; } }
         .nav-button.active { background-color: #3b82f6; color: white; }
         .nav-button { transition: all 0.2s ease-in-out; }
-        [x-cloak] { display: none; }
+        .loader {
+            border-top-color: #3498db;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
@@ -97,6 +106,22 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- New LLM Interpretation Section -->
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+                    <h3 class="text-xl font-semibold mb-3">Patient Insights ✨</h3>
+                    <p class="text-slate-600 mb-4">Click the button below to get an AI-generated interpretation of the currently selected patient's test trajectory. This feature leverages a large language model to provide a concise summary of their IBD activity based on their Calprotectin data.</p>
+                    <button id="generate-interpretation" class="bg-blue-600 text-white px-6 py-3 rounded-md shadow-md hover:bg-blue-700 transition duration-300 ease-in-out font-semibold">
+                        ✨ Generate Patient Trajectory Summary
+                    </button>
+                    <div id="interpretation-output" class="mt-4 p-4 bg-blue-50 text-blue-800 rounded-md border border-blue-200 hidden">
+                        <p id="interpretation-text" class="text-sm italic"></p>
+                        <div id="interpretation-loading" class="text-center hidden">
+                            <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-8 w-8 mb-2"></div>
+                            <p>Generating insight...</p>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <section id="code" class="page-section hidden space-y-6">
@@ -118,14 +143,24 @@ import time_machine
 import json
 from datetime import datetime, timedelta
 
-# Mock functions for demonstration
+# Mock external dependencies for self-contained code snippet
+# In a real setup, these would be imported from their respective files.
 def calpro_manage_new_calpro_test_result(user_id, test_result):
-    print(f"--- MOCK: Storing Calpro result for {user_id} ---")
+    # This is a simplified mock. In a real system, this would interact with a database.
+    print(f"--- MOCK: Storing Calpro result for user {user_id} ---")
+    print(f"  Test data: {test_result}")
+    # Simulate a successful response
     return ({'calpro_test_id': 'calpro_' + str(datetime.now().timestamp())}, 200)
 
 def health_survey_manage_new_health_survey(user_id, health_survey):
-    print(f"--- MOCK: Storing Health Survey for {user_id} ---")
-    return ({'health_survey_id': 'hs_' + str(datetime.now().timestamp())}, 200)
+    # This is a simplified mock. In a real system, this would interact with a database.
+    print(f"--- MOCK: Storing Health Survey for user {user_id} ---")
+    print(f"  Survey data: {health_survey}")
+    # Simulate a successful response with some mock scores
+    return ({'health_survey_id': 'hs_' + str(datetime.now().timestamp()), 'sccai_score': 5, 'hbi_score': 3, 'shs_score': 7}, 200)
+
+# Mock HTTP_200_OK for completeness
+HTTP_200_OK = 200
 
 class TestSimulation:
     def __init__(self):
@@ -133,6 +168,7 @@ class TestSimulation:
         self.current_date = datetime.now()
         
     def add_user(self, user_id, name):
+        """Add a user to the simulation"""
         user_data = {
             'user_id': user_id,
             'name': name,
@@ -143,10 +179,232 @@ class TestSimulation:
         print(f"Added user: {name} (ID: {user_id})")
         
     def simulate_calpro_test(self, user_id, test_date=None):
-        # ... (full implementation from report) ...
-        pass
+        """Simulate a Calpro test for a specific user"""
+        user = self._find_user(user_id)
+        if not user:
+            print(f"User {user_id} not found")
+            return
+            
+        if test_date:
+            self.current_date = test_date
+            
+        print(f"\n=== Calpro Test Simulation for {user['name']} ===")
+        print(f"Date: {self.current_date.strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        # Manual input for Calpro test data
+        print("Enter Calpro test results:")
+        c_score = float(input("C Score: "))
+        t_score = float(input("T Score: "))
+        overall_result = input("Overall Result (e.g., 'Normal', 'Elevated'): ")
+        final_concentration = float(input("Final Concentration (μg/g): "))
+        
+        test_result = {
+            'date': self.current_date.isoformat(),
+            'c_score': c_score,
+            't_score': t_score,
+            'overall_result': overall_result,
+            'final_concentration': final_concentration
+        }
+        
+        # Use time machine to simulate the test at the specified date
+        with time_machine.travel(self.current_date):
+            result, status_code = calpro_manage_new_calpro_test_result(user_id, test_result)
+            
+            if status_code == HTTP_200_OK:
+                test_result['result_id'] = result.get('calpro_test_id')
+                user['calpro_tests'].append(test_result)
+                print(f"✓ Calpro test recorded successfully (ID: {result.get('calpro_test_id')})")
+                print(f"  Final Concentration: {final_concentration} μg/g")
+                print(f"  Overall Result: {overall_result}")
+            else:
+                print(f"✗ Failed to record Calpro test: {result}")
+                
+    def simulate_health_survey(self, user_id, test_date=None):
+        """Simulate a health survey for a specific user"""
+        user = self._find_user(user_id)
+        if not user:
+            print(f"User {user_id} not found")
+            return
+            
+        if test_date:
+            self.current_date = test_date
+            
+        print(f"\n=== Health Survey Simulation for {user['name']} ===")
+        print(f"Date: {self.current_date.strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        # Manual input for health survey data
+        health_survey = self._get_health_survey_input()
+        
+        # Use time machine to simulate the survey at the specified date
+        with time_machine.travel(self.current_date):
+            result, status_code = health_survey_manage_new_health_survey(user_id, health_survey)
+            
+            if status_code == HTTP_200_OK:
+                health_survey['result_id'] = result.get('health_survey_id')
+                health_survey['date'] = self.current_date.isoformat()
+                user['health_surveys'].append(health_survey)
+                print(f"✓ Health survey recorded successfully (ID: {result.get('health_survey_id')})")
+                print(f"  SCCAI Score: {result.get('sccai_score', 'N/A')}")
+                print(f"  HBI Score: {result.get('hbi_score', 'N/A')}")
+                print(f"  SHS Score: {result.get('shs_score', 'N/A')}")
+            else:
+                print(f"✗ Failed to record health survey: {result}")
+                
+    def _get_health_survey_input(self):
+        """Get manual input for health survey questions"""
+        print("\n--- Health Survey Questions ---")
+        
+        section_one = []
+        section_two = []
+        
+        # SCCAI Section One Questions (questions 1, 2, 4, 6)
+        print("\nSCCAI Questions (Section One):")
+        for q_id in [1, 2, 4, 6]:
+            score = int(input(f"Question {q_id} score (0-3): "))
+            section_one.append({
+                "question_id": q_id,
+                "answer_score": score
+            })
+            
+        # HBI Section One Questions (questions 3, 5, 8)
+        print("\nHBI Questions (Section One):")
+        for q_id in [3, 5, 8]:
+            score = int(input(f"Question {q_id} score (0-4): "))
+            section_one.append({
+                "question_id": q_id,
+                "answer_score": score
+            })
+            
+        # Section Two Questions (Visual Analog Scale 0-100)
+        print("\nSection Two (Visual Analog Scale 0-100):")
+        score = int(input("Overall wellbeing score (0-100): "))
+        section_two.append({
+            "question_id": 1,
+            "answer_score": score
+        })
+        
+        return {
+            "section_one": section_one,
+            "section_two": section_two
+        }
+        
+    def advance_time(self, weeks=1):
+        """Advance the simulation time by specified weeks"""
+        self.current_date += timedelta(weeks=weeks)
+        print(f"\n⏰ Time advanced to: {self.current_date.strftime('%Y-%m-%d %H:%M:%S')}")
+        
+    def _find_user(self, user_id):
+        """Find user by ID"""
+        return next((user for user in self.users if user['user_id'] == user_id), None)
+        
+    def show_user_progress(self, user_id):
+        """Show the progress of a specific user"""
+        user = self._find_user(user_id)
+        if not user:
+            print(f"User {user_id} not found")
+            return
+            
+        print(f"\n=== Progress Report for {user['name']} ===")
+        
+        print(f"\nCalpro Tests ({len(user['calpro_tests'])}):")
+        for i, test in enumerate(user['calpro_tests'], 1):
+            date = datetime.fromisoformat(test['date']).strftime('%Y-%m-%d')
+            print(f"  {i}. {date} - Concentration: {test['final_concentration']} μg/g, Result: {test['overall_result']}")
+            
+        print(f"\nHealth Surveys ({len(user['health_surveys'])}):")
+        for i, survey in enumerate(user['health_surveys'], 1):
+            date = datetime.fromisoformat(survey['date']).strftime('%Y-%m-%d')
+            print(f"  {i}. {date} - Survey ID: {survey.get('result_id', 'N/A')}")
+            
+    def show_all_users_summary(self):
+        """Show summary for all users"""
+        print(f"\n=== Simulation Summary ===")
+        print(f"Current Date: {self.current_date.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Total Users: {len(self.users)}")
+        
+        for user in self.users:
+            print(f"\n{user['name']} (ID: {user['user_id']}):")
+            print(f"  Calpro Tests: {len(user['calpro_tests'])}")
+            print(f"  Health Surveys: {len(user['health_surveys'])}")
+            
+    def export_simulation_data(self, filename="simulation_results.json"):
+        """Export simulation data to JSON file"""
+        data = {
+            'simulation_date': self.current_date.isoformat(),
+            'users': self.users
+        }
+        
+        with open(filename, 'w') as f:
+            json.dump(data, f, indent=2)
+        print(f"Simulation data exported to {filename}")
 
-# ... (rest of the script from the report) ...
+def run_interactive_simulation():
+    """Run an interactive simulation session"""
+    sim = TestSimulation()
+    
+    print("=== IBD Test Simulation Tool ===")
+    print("Commands:")
+    print("  add_user <user_id> <name> - Add a user")
+    print("  calpro <user_id> - Run Calpro test")
+    print("  health <user_id> - Run health survey") 
+    print("  advance <weeks> - Advance time by weeks")
+    print("  progress <user_id> - Show user progress")
+    print("  summary - Show all users summary")
+    print("  export - Export data to JSON")
+    print("  quit - Exit simulation")
+    
+    while True:
+        try:
+            command = input("\n> ").strip().split()
+            
+            if not command:
+                continue
+                
+            cmd = command[0].lower()
+            
+            if cmd == "add_user" and len(command) >= 3:
+                user_id = command[1]
+                name = " ".join(command[2:])
+                sim.add_user(user_id, name)
+                
+            elif cmd == "calpro" and len(command) >= 2:
+                user_id = command[1]
+                sim.simulate_calpro_test(user_id)
+                
+            elif cmd == "health" and len(command) >= 2:
+                user_id = command[1]
+                sim.simulate_health_survey(user_id)
+                
+            elif cmd == "advance" and len(command) >= 2:
+                weeks = int(command[1])
+                sim.advance_time(weeks)
+                
+            elif cmd == "progress" and len(command) >= 2:
+                user_id = command[1]
+                sim.show_user_progress(user_id)
+                
+            elif cmd == "summary":
+                sim.show_all_users_summary()
+                
+            elif cmd == "export":
+                filename = command[1] if len(command) > 1 else "simulation_results.json"
+                sim.export_simulation_data(filename)
+                
+            elif cmd == "quit":
+                print("Ending simulation...")
+                break
+                
+            else:
+                print("Invalid command or missing parameters")
+                
+        except KeyboardInterrupt:
+            print("\nEnding simulation...")
+            break
+        except Exception as e:
+            print(f"Error: {e}")
+
+if __name__ == "__main__":
+    run_interactive_simulation()
                                 </code></pre>
                             </div>
                         </div>
@@ -161,14 +419,188 @@ class TestSimulation:
                                 <button onclick="copyToClipboard('code-block-2')" class="absolute top-2 right-2 bg-slate-200 text-slate-700 px-2 py-1 rounded text-xs font-semibold hover:bg-slate-300">Copy</button>
                                 <pre class="bg-slate-800 text-white p-4 rounded-md overflow-x-auto"><code id="code-block-2">
 from datetime import datetime, timedelta
-# from test_simulation import TestSimulation # Assuming in same folder
+# The TestSimulation class is assumed to be available,
+# typically from importing a module like 'from test_simulation import TestSimulation'
+# or if it's defined in the same file. For this snippet, assume it's accessible.
 
-def scenario_patient_improvement(sim):
+# For this standalone snippet to work, you might need to
+# copy the TestSimulation class definition above this part
+# or adjust your Python environment's path.
+# MOCK TestSimulation for local testing of this snippet if run separately
+try:
+    from test_simulation import TestSimulation
+except ImportError:
+    print("TestSimulation class not found, using a simple mock for demonstration.")
+    class TestSimulation:
+        def __init__(self):
+            self.users = []
+            self.current_date = datetime.now()
+        def add_user(self, user_id, name):
+            print(f"MOCK: Added user: {name} (ID: {user_id})")
+            self.users.append({'user_id': user_id, 'name': name, 'calpro_tests': [], 'health_surveys': []})
+        def simulate_calpro_test(self, user_id):
+            print(f"MOCK: Simulating Calpro test for {user_id}. Please input mock data.")
+            # Simple mock for input, not fully interactive
+            c_score = float(input("MOCK C Score: "))
+            t_score = float(input("MOCK T Score: "))
+            overall_result = input("MOCK Overall Result: ")
+            final_concentration = float(input("MOCK Final Concentration: "))
+            user = next((u for u in self.users if u['user_id'] == user_id), None)
+            if user:
+                user['calpro_tests'].append({'date': datetime.now().isoformat(), 'c_score': c_score, 't_score': t_score, 'overall_result': overall_result, 'final_concentration': final_concentration})
+                print("MOCK: Calpro test recorded.")
+        def simulate_health_survey(self, user_id):
+            print(f"MOCK: Simulating Health Survey for {user_id}. Please input mock data.")
+            # Simple mock for input, not fully interactive
+            sccai_score = int(input("MOCK SCCAI Question 1 score (0-3): "))
+            user = next((u for u in self.users if u['user_id'] == user_id), None)
+            if user:
+                user['health_surveys'].append({'date': datetime.now().isoformat(), 'section_one': [{'question_id': 1, 'answer_score': sccai_score}]})
+                print("MOCK: Health survey recorded.")
+        def advance_time(self, weeks):
+            self.current_date += timedelta(weeks=weeks)
+            print(f"MOCK: Time advanced to: {self.current_date.strftime('%Y-%m-%d %H:%M:%S')}")
+        def show_user_progress(self, user_id):
+            user = next((u for u in self.users if u['user_id'] == user_id), None)
+            if user:
+                print(f"MOCK Progress for {user['name']}: Calpro Tests: {len(user['calpro_tests'])}, Health Surveys: {len(user['health_surveys'])}")
+            else:
+                print(f"MOCK: User {user_id} not found.")
+        def show_all_users_summary(self):
+            print(f"MOCK Summary: Total Users: {len(self.users)}")
+        def export_simulation_data(self, filename):
+            print(f"MOCK: Data exported to {filename}")
+
+def scenario_patient_improvement():
+    """Simulate a patient showing improvement over time"""
+    sim = TestSimulation()
+    
+    # Add patient
     sim.add_user("patient_001", "John Doe - Improvement Case")
-    # ... (full implementation from report) ...
+    
+    # Week 0 - Initial high inflammation
+    print("\n=== Week 0 - Initial Assessment ===")
+    sim.simulate_calpro_test("patient_001")
+    # Suggested input: C Score: 8.5, T Score: 7.2, Overall: "Elevated", Concentration: 450
+    
+    sim.simulate_health_survey("patient_001")
+    # Suggested SCCAI scores: higher values (2-3 for each question)
+    
+    # Week 4 - Some improvement
+    sim.advance_time(4)
+    print("\n=== Week 4 - First Follow-up ===")
+    sim.simulate_calpro_test("patient_001")
+    # Suggested input: C Score: 6.8, T Score: 5.9, Overall: "Moderate", Concentration: 280
+    
+    sim.simulate_health_survey("patient_001")
+    # Suggested SCCAI scores: lower values (0-1 for each question)
+    
+    # Week 8 - Continued improvement
+    sim.advance_time(4)
+    print("\n=== Week 8 - Second Follow-up ===")
+    sim.simulate_calpro_test("patient_001")
+    # Suggested input: C Score: 4.2, T Score: 3.8, Overall: "Normal", Concentration: 120
+    
+    sim.simulate_health_survey("patient_001")
+    # Suggested SCCAI scores: lower values (0-1 for each question)
+    
+    # Week 12 - Stable remission
+    sim.advance_time(4)
+    print("\n=== Week 12 - Final Assessment ===")
+    sim.simulate_calpro_test("patient_001")
+    # Suggested input: C Score: 2.1, T Score: 2.3, Overall: "Normal", Concentration: 85
+    
+    sim.show_user_progress("patient_001")
     return sim
 
-# ... (rest of the script from the report) ...
+def scenario_patient_relapse():
+    """Simulate a patient experiencing a relapse"""
+    sim = TestSimulation()
+    
+    # Add patient
+    sim.add_user("patient_002", "Jane Smith - Relapse Case")
+    
+    # Week 0 - Stable condition
+    print("\n=== Week 0 - Baseline (Stable) ===")
+    sim.simulate_calpro_test("patient_002")
+    # Suggested input: C Score: 3.2, T Score: 2.8, Overall: "Normal", Concentration: 95
+    
+    sim.simulate_health_survey("patient_002")
+    # Suggested SCCAI scores: moderate values (1-2 for each question)
+    
+    # Week 6 - Early signs of flare
+    sim.advance_time(6)
+    print("\n=== Week 6 - Early Flare Signs ===")
+    sim.simulate_calpro_test("patient_002")
+    # Suggested input: C Score: 6.5, T Score: 5.2, Overall: "Elevated", Concentration: 320
+    
+    sim.simulate_health_survey("patient_002")
+    # Suggested SCCAI scores: moderate values (1-2 for each question)
+    
+    # Week 10 - Full relapse
+    sim.advance_time(4)
+    print("\n=== Week 10 - Full Relapse ===")
+    sim.simulate_calpro_test("patient_002")
+    # Suggested input: C Score: 9.1, T Score: 8.3, Overall: "Severely Elevated", Concentration: 580
+    
+    sim.simulate_health_survey("patient_002")
+    # Suggested SCCAI scores: high values (2-3 for each question)
+    
+    sim.show_user_progress("patient_002")
+    return sim
+
+def scenario_multiple_patients():
+    """Simulate multiple patients with different trajectories"""
+    sim = TestSimulation()
+    
+    # Add multiple patients
+    patients = [
+        ("patient_003", "Alice Johnson - Stable Case"),
+        ("patient_004", "Bob Wilson - Variable Case"),
+        ("patient_005", "Carol Brown - Treatment Response")
+    ]
+    
+    for user_id, name in patients:
+        sim.add_user(user_id, name)
+    
+    # Initial tests for all patients
+    print("\n=== Week 0 - Initial Assessment for All Patients ===")
+    for user_id, name in patients:
+        print(f"\nTesting {name}:")
+        sim.simulate_calpro_test(user_id)
+        
+    # 4-week follow-up
+    sim.advance_time(4)
+    print("\n=== Week 4 - Follow-up Tests ===")
+    for user_id, name in patients:
+        print(f"\nTesting {name}:")
+        sim.simulate_calpro_test(user_id)
+        sim.simulate_health_survey(user_id)
+        
+    sim.show_all_users_summary()
+    return sim
+
+if __name__ == "__main__":
+    print("Select a scenario:")
+    print("1. Patient Improvement")
+    print("2. Patient Relapse")
+    print("3. Multiple Patients")
+    
+    choice = input("Enter choice (1-3): ")
+    
+    if choice == "1":
+        sim = scenario_patient_improvement()
+    elif choice == "2":
+        sim = scenario_patient_relapse()
+    elif choice == "3":
+        sim = scenario_multiple_patients()
+    else:
+        print("Invalid choice")
+        exit()
+    
+    # Export results
+    sim.export_simulation_data(f"scenario_{choice}_results.json")
+    print("\nScenario completed successfully!")
                                 </code></pre>
                             </div>
                         </div>
@@ -202,6 +634,14 @@ def scenario_patient_improvement(sim):
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- Custom Alert/Message Box -->
+    <div id="custom-alert" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+            <p id="alert-message" class="text-lg text-slate-700 mb-4"></p>
+            <button onclick="document.getElementById('custom-alert').classList.add('hidden')" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">OK</button>
+        </div>
     </div>
 
     <script>
@@ -245,6 +685,10 @@ def scenario_patient_improvement(sim):
             const metricTScore = document.querySelector('#metric-t-score span');
             const metricConcentration = document.querySelector('#metric-concentration span');
             const metricResult = document.querySelector('#metric-result span');
+            const generateInterpretationBtn = document.getElementById('generate-interpretation');
+            const interpretationOutput = document.getElementById('interpretation-output');
+            const interpretationText = document.getElementById('interpretation-text');
+            const interpretationLoading = document.getElementById('interpretation-loading');
 
 
             const ctx = document.getElementById('concentrationChart').getContext('2d');
@@ -332,6 +776,8 @@ def scenario_patient_improvement(sim):
                 concentrationChart.data.datasets[0].data = selectedData.data.map(d => d.final_concentration);
                 concentrationChart.update();
                 resetMetrics();
+                interpretationOutput.classList.add('hidden'); 
+                interpretationText.textContent = '';
             }
 
             scenarioSelect.addEventListener('change', updateChart);
@@ -370,7 +816,59 @@ def scenario_patient_improvement(sim):
                     content.classList.toggle('hidden');
                 });
             });
+
+            // LLM Integration
+            generateInterpretationBtn.addEventListener('click', async () => {
+                const selectedScenarioKey = scenarioSelect.value;
+                const patientData = simulationData[selectedScenarioKey].data;
+
+                interpretationOutput.classList.remove('hidden');
+                interpretationText.textContent = '';
+                interpretationLoading.classList.remove('hidden');
+
+                try {
+                    let chatHistory = [];
+                    const prompt = `You are a medical assistant specialized in IBD data interpretation. Analyze the following patient's Calprotectin test results over time and provide a concise summary of their likely IBD activity and progression. Focus on changes in final concentration, C-Score, T-Score, and overall result.
+                    Patient Data (JSON format):
+                    ${JSON.stringify(patientData, null, 2)}
+                    Summary:`;
+                    
+                    chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                    const payload = { contents: chatHistory };
+                    const apiKey = ""; 
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await response.json();
+
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        interpretationText.textContent = text;
+                    } else {
+                        interpretationText.textContent = 'Failed to get interpretation. Unexpected API response structure.';
+                        showCustomAlert('Failed to get interpretation. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Error generating interpretation:', error);
+                    interpretationText.textContent = 'Error generating interpretation. Please try again.';
+                    showCustomAlert('An error occurred while generating interpretation.');
+                } finally {
+                    interpretationLoading.classList.add('hidden');
+                }
+            });
         });
+
+        function showCustomAlert(message) {
+            document.getElementById('alert-message').textContent = message;
+            document.getElementById('custom-alert').classList.remove('hidden');
+        }
 
         function copyToClipboard(elementId) {
             const codeEl = document.getElementById(elementId);
@@ -382,9 +880,9 @@ def scenario_patient_improvement(sim):
             textarea.select();
             try {
                 document.execCommand('copy');
-                alert('Code copied to clipboard!');
+                showCustomAlert('Code copied to clipboard!');
             } catch (err) {
-                alert('Failed to copy code.');
+                showCustomAlert('Failed to copy code. Your browser might not support this feature directly.');
             }
             document.body.removeChild(textarea);
         }
