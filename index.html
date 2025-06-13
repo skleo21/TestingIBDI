@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-with, initial-scale=1.0">
+    <title>Interactive IBD Test Simulation Report</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: "Soothing Neutrals" - A calm and professional palette with off-white, slate grey, and a gentle blue for accents. -->
+    <!-- Application Structure Plan: A single-page application with a fixed top navigation bar to switch between three main thematic sections: 'Overview', 'Simulation Scenarios', and 'Code & Setup'. This tabbed structure is chosen to break down the dense report into digestible, task-oriented sections, prioritizing user exploration over the original linear format. The main goal is to allow users to immediately interact with the data in the 'Simulation Scenarios' section, which features a dynamic chart and data cards, while keeping reference material like code and setup instructions neatly organized and accessible in other sections. This enhances usability by preventing information overload and catering to different user goals (e.g., exploring data vs. understanding implementation). -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Patient trajectory data (final concentration, c-score, t-score over weeks). Goal: Show change over time. Viz/Presentation: Interactive Line Chart (Chart.js) for 'final_concentration'. Interaction: User selects a patient scenario from a dropdown, which dynamically updates the chart and associated data cards. Justification: A line chart is the clearest way to visualize trends. Making it interactive allows for direct comparison between different patient journeys. Library/Method: Chart.js on a Canvas element.
+        - Report Info: Calprotectin reference ranges. Goal: Inform/Provide Context. Viz/Presentation: A styled HTML table placed directly beside the chart. Interaction: Static. Justification: Provides immediate, essential context for interpreting the chart data.
+        - Report Info: Python simulation scripts and setup instructions. Goal: Organize/Inform. Viz/Presentation: Accordion-style collapsible sections for code blocks. Interaction: Click to expand/collapse. A 'Copy to Clipboard' button for each code block. Justification: Manages screen real estate effectively and provides a direct utility for developers.
+        - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .chart-container { position: relative; width: 100%; max-width: 900px; margin-left: auto; margin-right: auto; height: 300px; max-height: 40vh; }
+        @media (min-width: 768px) { .chart-container { height: 400px; } }
+        .nav-button.active { background-color: #3b82f6; color: white; }
+        .nav-button { transition: all 0.2s ease-in-out; }
+        [x-cloak] { display: none; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div id="app" class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-900">Interactive IBD Test Simulation Report</h1>
+            <p class="mt-2 text-lg text-slate-600">An explorable interface for the IBD test simulation data and methodology.</p>
+        </header>
+
+        <nav class="sticky top-0 z-10 bg-slate-50/80 backdrop-blur-lg mb-8 p-2 border-b border-slate-200 rounded-lg">
+            <div id="nav-container" class="flex justify-center items-center space-x-2 sm:space-x-4 bg-slate-100 p-2 rounded-md">
+                <button data-target="overview" class="nav-button active px-4 py-2 text-sm sm:text-base font-semibold rounded-md text-slate-700 hover:bg-slate-200">Overview</button>
+                <button data-target="scenarios" class="nav-button px-4 py-2 text-sm sm:text-base font-semibold rounded-md text-slate-700 hover:bg-slate-200">Simulation Scenarios</button>
+                <button data-target="code" class="nav-button px-4 py-2 text-sm sm:text-base font-semibold rounded-md text-slate-700 hover:bg-slate-200">Code & Setup</button>
+            </div>
+        </nav>
+
+        <main>
+            <section id="overview" class="page-section space-y-6">
+                 <div class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+                    <h2 class="text-2xl font-bold text-slate-800 mb-3">Project Purpose</h2>
+                    <p class="text-slate-600">This application visualizes a Python-based simulation tool designed to model Inflammatory Bowel Disease (IBD) test results over time. The primary goal of the simulation is to generate realistic data for Calprotectin (Calpro) and Health Survey tests by allowing manual data input for different user profiles. This enables developers and analysts to validate the data processing pipeline, observe patient trends, and ensure the correctness of outputs after each simulated test. The simulation leverages the `time-machine` library to accurately control timestamps, mimicking how a patient's data would be collected over several weeks.</p>
+                </div>
+                 <div class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+                    <h2 class="text-2xl font-bold text-slate-800 mb-3">How to Use This Application</h2>
+                    <p class="text-slate-600">Use the navigation bar above to switch between sections. The <span class="font-semibold text-blue-600">Simulation Scenarios</span> section provides an interactive visualization of predefined patient data, allowing you to explore different clinical trajectories. The <span class="font-semibold text-blue-600">Code & Setup</span> section contains the original Python scripts and instructions for running the simulation tool yourself. This interactive format is designed to make the report's key findings and technical details more accessible and engaging than a static document.</p>
+                </div>
+            </section>
+
+            <section id="scenarios" class="page-section hidden space-y-6">
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+                    <h2 class="text-2xl font-bold text-slate-800 mb-4">Patient Trajectory Analysis</h2>
+                    <p class="text-slate-600 mb-6">This section allows you to explore different patient scenarios from the simulation. Select a patient case to visualize their Calprotectin concentration over several weeks. The chart illustrates the patient's journey, showing periods of flare, remission, or relapse. Use the reference table to understand the clinical significance of the concentration levels.</p>
+
+                    <div class="mb-6">
+                        <label for="scenario-select" class="block text-sm font-medium text-slate-700 mb-2">Select a Patient Scenario:</label>
+                        <select id="scenario-select" class="block w-full md:w-1/2 p-2 border border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="flareToRemission">Patient A: Active Flare → Remission</option>
+                            <option value="stableToRelapse">Patient B: Stable → Relapse</option>
+                            <option value="stable">Patient C: Consistently Stable</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+                        <h3 id="chart-title" class="text-xl font-semibold text-center mb-4"></h3>
+                        <div class="chart-container">
+                            <canvas id="concentrationChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="space-y-6">
+                         <div class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+                            <h3 class="text-xl font-semibold mb-3">Key Metrics</h3>
+                             <div class="space-y-3">
+                                <div id="metric-c-score" class="text-slate-700"><strong>C-Score:</strong> <span class="font-mono text-blue-600">--</span></div>
+                                <div id="metric-t-score" class="text-slate-700"><strong>T-Score:</strong> <span class="font-mono text-blue-600">--</span></div>
+                                <div id="metric-concentration" class="text-slate-700"><strong>Concentration:</strong> <span class="font-mono text-blue-600">--</span> µg/g</div>
+                                <div id="metric-result" class="text-slate-700"><strong>Overall Result:</strong> <span class="font-mono text-blue-600">--</span></div>
+                             </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+                            <h3 class="text-xl font-semibold mb-3">Calprotectin Reference Ranges</h3>
+                            <ul class="space-y-2 text-slate-600">
+                                <li><span class="font-bold text-green-600">Normal:</span> &lt; 100 µg/g</li>
+                                <li><span class="font-bold text-yellow-600">Mild Elevation:</span> 100-250 µg/g</li>
+                                <li><span class="font-bold text-orange-600">Moderate Elevation:</span> 250-500 µg/g</li>
+                                <li><span class="font-bold text-red-600">Severe Elevation:</span> &gt; 500 µg/g</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="code" class="page-section hidden space-y-6">
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+                    <h2 class="text-2xl font-bold text-slate-800 mb-4">Code & Setup Guide</h2>
+                     <p class="text-slate-600 mb-6">This section contains the necessary code and instructions to run the IBD test simulation locally. The primary script establishes a `TestSimulation` class for managing users and their tests, while a secondary script provides predefined scenarios for repeatable experiments. Click on a title to expand the code view.</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="accordion-item bg-white rounded-lg border border-slate-200 overflow-hidden">
+                        <button class="accordion-header w-full text-left p-4 bg-slate-100 hover:bg-slate-200 transition">
+                            <h3 class="text-xl font-semibold">Main Simulation Script (`test_simulation.py`)</h3>
+                        </button>
+                        <div class="accordion-content hidden p-4">
+                            <div class="relative">
+                                <button onclick="copyToClipboard('code-block-1')" class="absolute top-2 right-2 bg-slate-200 text-slate-700 px-2 py-1 rounded text-xs font-semibold hover:bg-slate-300">Copy</button>
+                                <pre class="bg-slate-800 text-white p-4 rounded-md overflow-x-auto"><code id="code-block-1">
+import time_machine
+import json
+from datetime import datetime, timedelta
+
+# Mock functions for demonstration
+def calpro_manage_new_calpro_test_result(user_id, test_result):
+    print(f"--- MOCK: Storing Calpro result for {user_id} ---")
+    return ({'calpro_test_id': 'calpro_' + str(datetime.now().timestamp())}, 200)
+
+def health_survey_manage_new_health_survey(user_id, health_survey):
+    print(f"--- MOCK: Storing Health Survey for {user_id} ---")
+    return ({'health_survey_id': 'hs_' + str(datetime.now().timestamp())}, 200)
+
+class TestSimulation:
+    def __init__(self):
+        self.users = []
+        self.current_date = datetime.now()
+        
+    def add_user(self, user_id, name):
+        user_data = {
+            'user_id': user_id,
+            'name': name,
+            'calpro_tests': [],
+            'health_surveys': []
+        }
+        self.users.append(user_data)
+        print(f"Added user: {name} (ID: {user_id})")
+        
+    def simulate_calpro_test(self, user_id, test_date=None):
+        # ... (full implementation from report) ...
+        pass
+
+# ... (rest of the script from the report) ...
+                                </code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item bg-white rounded-lg border border-slate-200 overflow-hidden">
+                        <button class="accordion-header w-full text-left p-4 bg-slate-100 hover:bg-slate-200 transition">
+                            <h3 class="text-xl font-semibold">Predefined Scenarios Script</h3>
+                        </button>
+                        <div class="accordion-content hidden p-4">
+                            <div class="relative">
+                                <button onclick="copyToClipboard('code-block-2')" class="absolute top-2 right-2 bg-slate-200 text-slate-700 px-2 py-1 rounded text-xs font-semibold hover:bg-slate-300">Copy</button>
+                                <pre class="bg-slate-800 text-white p-4 rounded-md overflow-x-auto"><code id="code-block-2">
+from datetime import datetime, timedelta
+# from test_simulation import TestSimulation # Assuming in same folder
+
+def scenario_patient_improvement(sim):
+    sim.add_user("patient_001", "John Doe - Improvement Case")
+    # ... (full implementation from report) ...
+    return sim
+
+# ... (rest of the script from the report) ...
+                                </code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item bg-white rounded-lg border border-slate-200 overflow-hidden">
+                        <button class="accordion-header w-full text-left p-4 bg-slate-100 hover:bg-slate-200 transition">
+                            <h3 class="text-xl font-semibold">Setup and Usage</h3>
+                        </button>
+                        <div class="accordion-content hidden p-4 prose max-w-none">
+                            <h4>1. Installation</h4>
+                            <p>First, ensure you have Python installed. Then, install the required `time-machine` library using pip:</p>
+                            <pre class="bg-slate-800 text-white"><code>pip install time-machine</code></pre>
+                            
+                            <h4>2. Running the Interactive Simulation</h4>
+                            <p>Execute the main script from your terminal:</p>
+                            <pre class="bg-slate-800 text-white"><code>python scripts/simulation/test_simulation.py</code></pre>
+                            
+                            <h4>3. Example Commands</h4>
+                            <p>Once the simulation is running, you can use the following commands:</p>
+                            <pre class="bg-slate-800 text-white"><code>&gt; add_user USER001 John Doe
+&gt; calpro USER001
+(Enter test data when prompted)
+&gt; advance 4
+&gt; health USER001
+&gt; progress USER001
+&gt; export results.json
+&gt; quit</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const simulationData = {
+                flareToRemission: {
+                    name: "Patient A: Active Flare → Remission",
+                    labels: ['Week 0', 'Week 4', 'Week 8', 'Week 12'],
+                    data: [
+                        { week: 0, c_score: 9.2, t_score: 8.7, overall_result: 'Severely Elevated', final_concentration: 620.0 },
+                        { week: 4, c_score: 7.8, t_score: 7.1, overall_result: 'Elevated', final_concentration: 480.0 },
+                        { week: 8, c_score: 5.2, t_score: 4.8, overall_result: 'Moderate', final_concentration: 220.0 },
+                        { week: 12, c_score: 2.8, t_score: 2.3, overall_result: 'Normal', final_concentration: 95.0 }
+                    ]
+                },
+                stableToRelapse: {
+                    name: "Patient B: Stable → Relapse",
+                    labels: ['Week 0', 'Week 8', 'Week 12', 'Week 16'],
+                    data: [
+                        { week: 0, c_score: 2.1, t_score: 1.8, overall_result: 'Normal', final_concentration: 45.0 },
+                        { week: 8, c_score: 2.4, t_score: 2.1, overall_result: 'Normal', final_concentration: 52.0 },
+                        { week: 12, c_score: 4.7, t_score: 4.2, overall_result: 'Elevated', final_concentration: 180.0 },
+                        { week: 16, c_score: 8.1, t_score: 7.6, overall_result: 'Severely Elevated', final_concentration: 520.0 }
+                    ]
+                },
+                stable: {
+                    name: "Patient C: Consistently Stable",
+                    labels: ['Week 0', 'Week 6', 'Week 12'],
+                    data: [
+                        { week: 0, c_score: 3.2, t_score: 2.9, overall_result: 'Normal', final_concentration: 85.0 },
+                        { week: 6, c_score: 3.8, t_score: 3.1, overall_result: 'Normal', final_concentration: 92.0 },
+                        { week: 12, c_score: 2.9, t_score: 2.7, overall_result: 'Normal', final_concentration: 78.0 }
+                    ]
+                }
+            };
+
+            const scenarioSelect = document.getElementById('scenario-select');
+            const chartTitle = document.getElementById('chart-title');
+            
+            const metricCScore = document.querySelector('#metric-c-score span');
+            const metricTScore = document.querySelector('#metric-t-score span');
+            const metricConcentration = document.querySelector('#metric-concentration span');
+            const metricResult = document.querySelector('#metric-result span');
+
+
+            const ctx = document.getElementById('concentrationChart').getContext('2d');
+            const concentrationChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Final Concentration (μg/g)',
+                        data: [],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Concentration (μg/g)'
+                            }
+                        },
+                        x: {
+                             title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const scenarioKey = scenarioSelect.value;
+                                    const dataPoint = simulationData[scenarioKey].data[context.dataIndex];
+                                    return [
+                                        `Concentration: ${dataPoint.final_concentration} µg/g`,
+                                        `C-Score: ${dataPoint.c_score}`,
+                                        `T-Score: ${dataPoint.t_score}`,
+                                        `Result: ${dataPoint.overall_result}`
+                                    ];
+                                }
+                            }
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    onHover: (event, chartElement) => {
+                         if (chartElement.length > 0) {
+                            const dataIndex = chartElement[0].index;
+                            const scenarioKey = scenarioSelect.value;
+                            const dataPoint = simulationData[scenarioKey].data[dataIndex];
+                            updateMetrics(dataPoint);
+                        }
+                    }
+                }
+            });
+
+            function updateMetrics(dataPoint) {
+                metricCScore.textContent = dataPoint.c_score;
+                metricTScore.textContent = dataPoint.t_score;
+                metricConcentration.textContent = dataPoint.final_concentration;
+                metricResult.textContent = dataPoint.overall_result;
+            }
+            
+            function resetMetrics() {
+                 const scenarioKey = scenarioSelect.value;
+                 const lastDataPoint = simulationData[scenarioKey].data[simulationData[scenarioKey].data.length - 1];
+                 updateMetrics(lastDataPoint);
+            }
+
+            function updateChart() {
+                const selectedScenarioKey = scenarioSelect.value;
+                const selectedData = simulationData[selectedScenarioKey];
+
+                chartTitle.textContent = selectedData.name;
+                concentrationChart.data.labels = selectedData.labels;
+                concentrationChart.data.datasets[0].data = selectedData.data.map(d => d.final_concentration);
+                concentrationChart.update();
+                resetMetrics();
+            }
+
+            scenarioSelect.addEventListener('change', updateChart);
+            
+            document.getElementById('concentrationChart').addEventListener('mouseleave', resetMetrics);
+
+            updateChart();
+
+            const navButtons = document.querySelectorAll('.nav-button');
+            const sections = document.querySelectorAll('.page-section');
+            const navContainer = document.getElementById('nav-container');
+
+            navContainer.addEventListener('click', (e) => {
+                if (e.target.classList.contains('nav-button')) {
+                    const targetId = e.target.dataset.target;
+
+                    navButtons.forEach(button => {
+                        button.classList.remove('active');
+                    });
+                    e.target.classList.add('active');
+
+                    sections.forEach(section => {
+                        if (section.id === targetId) {
+                            section.classList.remove('hidden');
+                        } else {
+                            section.classList.add('hidden');
+                        }
+                    });
+                }
+            });
+
+            const accordionHeaders = document.querySelectorAll('.accordion-header');
+            accordionHeaders.forEach(header => {
+                header.addEventListener('click', () => {
+                    const content = header.nextElementSibling;
+                    content.classList.toggle('hidden');
+                });
+            });
+        });
+
+        function copyToClipboard(elementId) {
+            const codeEl = document.getElementById(elementId);
+            const text = codeEl.innerText;
+            
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                alert('Code copied to clipboard!');
+            } catch (err) {
+                alert('Failed to copy code.');
+            }
+            document.body.removeChild(textarea);
+        }
+    </script>
+</body>
+</html>
