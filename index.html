@@ -846,19 +846,31 @@ if __name__ == "__main__":
 
                     const result = await response.json();
 
+                    // DEBUGGING: Log the full API response for inspection
+                    console.log('Gemini API response:', result);
+                    // END DEBUGGING
+
                     if (result.candidates && result.candidates.length > 0 &&
                         result.candidates[0].content && result.candidates[0].content.parts &&
                         result.candidates[0].content.parts.length > 0) {
+                        if (result.candidates[0].finishReason === 'SAFETY') {
+                             interpretationText.textContent = 'Unable to generate interpretation due to safety concerns. Please adjust the input or try again.';
+                             showCustomAlert('Content generation blocked due to safety policy. Please adjust the input.');
+                             return; 
+                        }
                         const text = result.candidates[0].content.parts[0].text;
                         interpretationText.textContent = text;
+                    } else if (result.error) {
+                        interpretationText.textContent = `API Error: ${result.error.message || 'Unknown API error'}`;
+                        showCustomAlert(`API Error: ${result.error.message || 'Unknown API error'}. Check console for details.`);
                     } else {
-                        interpretationText.textContent = 'Failed to get interpretation. Unexpected API response structure.';
-                        showCustomAlert('Failed to get interpretation. Please try again.');
+                        interpretationText.textContent = 'Failed to get interpretation. Unexpected API response structure or no text generated.';
+                        showCustomAlert('Failed to get interpretation. Unexpected API response structure or no text generated. Check console for details.');
                     }
                 } catch (error) {
                     console.error('Error generating interpretation:', error);
-                    interpretationText.textContent = 'Error generating interpretation. Please try again.';
-                    showCustomAlert('An error occurred while generating interpretation.');
+                    interpretationText.textContent = 'Error generating interpretation. Please check your console for details.';
+                    showCustomAlert('An error occurred while generating interpretation. Please check console for details.');
                 } finally {
                     interpretationLoading.classList.add('hidden');
                 }
